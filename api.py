@@ -6,7 +6,9 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-DATA_DIR = Path(__file__).parent / "data"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+FRONTEND_FILE = BASE_DIR / "public" / "index.html"
 EXCLUDED_WORDS = {"resource", "secret", "credential", "password"}
 
 app = FastAPI(
@@ -91,6 +93,3 @@ def load_collection(collection_name):
         detail=f"Unsupported JSON structure in collection: {collection_name}",
     )
 
-
-def get_task_records():
-    return load_collection("PTMTDB_Prod.Tasks")
