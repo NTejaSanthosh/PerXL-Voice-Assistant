@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>PerXL Voice Assistant</title>
+
+  <style>
+
+    :root {
+
+      --bg: #f4f7fb;
+
+      --panel: #ffffff;
+
+      --text: #152238;
+
+      --muted: #64748b;
+
+      --line: #dce4ef;
+
+      --primary: #315efb;
+
+      --primary-dark: #2448cc;
+
+      --success: #16845b;
+
+      --danger: #c24141;
+
+      --shadow: 0 12px 36px rgba(20, 35, 70, 0.08);
+
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+
+      margin: 0;
+
+      background: var(--bg);
+
+      color: var(--text);
+
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+
+    }
+
+    .app { min-height: 100vh; }
+
+    .topbar {
+
+      display: flex; align-items: center; justify-content: space-between;
+
+      gap: 16px; padding: 20px clamp(18px, 4vw, 52px);
+
+      background: #101b34; color: white;
+
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .brand-mark {
+
+      width: 42px; height: 42px; display: grid; place-items: center;
+
+      border-radius: 13px; background: #315efb; font-size: 22px;
+
+    }
+
+    .brand h1 { margin: 0; font-size: 19px; letter-spacing: .2px; }
+
+    .brand p { margin: 4px 0 0; color: #c2cbe0; font-size: 12px; }
+
+    .api-status {
+
+      display: inline-flex; align-items: center; gap: 8px; font-size: 12px;
+
+      border: 1px solid #3d4b68; padding: 8px 11px; border-radius: 999px;
+
+      color: #dbe4f5; white-space: nowrap;
+
+    }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #f2b84b; }
+
+    .layout {
+
+      max-width: 1240px; margin: 0 auto; padding: 30px 20px 46px;
+
+      display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr);
+
+      gap: 22px;
+
+    }
+
+    .main-col, .side-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+
+    .card {
+
+      background: var(--panel); border: 1px solid var(--line); border-radius: 20px;
+
+      padding: 24px; box-shadow: var(--shadow);
+
+    }
+
+    .eyebrow { margin: 0 0 8px; color: var(--primary); text-transform: uppercase; font-size: 11px; font-weight: 800; letter-spacing: 1.2px; }
+
+    h2 { margin: 0; font-size: 22px; }
+
+    .sub { margin: 9px 0 0; color: var(--muted); line-height: 1.55; font-size: 14px; }
+
+    .voice-area {
+
+      margin-top: 24px; padding: 24px; border: 1px solid #dfe7fb;
+
+      background: linear-gradient(135deg, #f7f9ff, #eef3ff); border-radius: 18px;
+
+      text-align: center;
+
+    }
+
+    .mic-button {
+
+      width: 78px; height: 78px; border: 0; border-radius: 50%; cursor: pointer;
+
+      background: var(--primary); color: white; font-size: 29px;
+
+      box-shadow: 0 9px 22px rgba(49, 94, 251, .28); transition: .2s;
+
+    }
+
+    .mic-button:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+    .mic-button.listening { background: var(--danger); animation: pulse 1.4s infinite; }
+
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(194,65,65,.35); } 70% { box-shadow: 0 0 0 17px rgba(194,65,65,0); } 100% { box-shadow: 0 0 0 0 rgba(194,65,65,0); } }
+
+    .voice-label { margin: 13px 0 4px; font-weight: 700; }
+
+    .voice-help { margin: 0; font-size: 12px; color: var(--muted); }
+
+    label { display: block; margin: 19px 0 8px; font-size: 13px; font-weight: 700; }
+
+    textarea, input, select {
+
+      width: 100%; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+
+      padding: 13px 14px; font: inherit; font-size: 14px; color: var(--text); outline: none;
+
+    }
+
+    textarea { min-height: 105px; resize: vertical; line-height: 1.5; }
+
+    textarea:focus, input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(49,94,251,.10); }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 13px; }
+
+    .btn {
+
+      border: 0; border-radius: 11px; padding: 11px 16px; font-weight: 700;
+
+      font-size: 13px; cursor: pointer; transition: .15s;
+
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    .btn-secondary { background: #edf1f8; color: #263752; }
+
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+    .quick-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+
+    .quick-command {
+
+      text-align: left; border: 1px solid var(--line); background: white; border-radius: 13px;
+
+      padding: 13px; cursor: pointer; color: var(--text); min-height: 72px;
+
+    }
+
+    .quick-command:hover { border-color: var(--primary); background: #f8faff; }
+
+    .quick-command strong { display: block; font-size: 13px; margin-bottom: 5px; }
+
+    .quick-command span { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+    .result-box { margin-top: 18px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+
+    .result-head { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f8fafc; border-bottom: 1px solid var(--line); }
+
+    .result-head strong { font-size: 13px; }
+
+    .result-content { padding: 15px; max-height: 360px; overflow: auto; }
+
+    .placeholder { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+    pre { white-space: pre-wrap; word-break: break-word; margin: 0; font: 12px/1.6 Consolas, "Courier New", monospace; }
+
+    .badge { display: inline-block; border-radius: 999px; padding: 5px 8px; background: #eaf7f0; color: var(--success); font-size: 11px; font-weight: 800; }
+
+    .badge.error { background: #fff0f0; color: var(--danger); }
+
+    .history-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+
+    .history-item { padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+
+    .history-item strong { display: block; font-size: 13px; margin-bottom: 5px; }
+
+    .history-item p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    .field-row { display: grid; grid-template-columns: 1fr 120px; gap: 10px; }
+
+    .hint { padding: 12px 13px; background: #fff9e9; border: 1px solid #f2e3b9; border-radius: 12px; color: #755c19; font-size: 12px; line-height: 1.5; margin-top: 14px; }
+
+    .footer { max-width: 1240px; margin: 0 auto; padding: 0 20px 25px; text-align: center; color: var(--muted); font-size: 12px; }
+
+    @media (max-width: 850px) { .layout { grid-template-columns: 1fr; } }
+
+    @media (max-width: 520px) {
+
+      .topbar { align-items: flex-start; flex-direction: column; }
+
+      .card { padding: 18px; }
+
+      .quick-grid { grid-template-columns: 1fr; }
+
+      .field-row { grid-template-columns: 1fr; }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="app">
+
+    <header class="topbar">
+
+      <div class="brand">
+
+        <div class="brand-mark">◉</div>
+
+        <div>
+
+          <h1>PerXL Voice Assistant</h1>
+
+          <p>Speak naturally. Review the transcript. Run your command.</p>
+
+        </div>
+
+      </div>
+
+      <div class="api-status"><span class="dot" id="apiDot"></span><span id="apiStatus">API connection not checked</span></div>
+
+    </header>
+
+
+
+    <main class="layout">
+
+      <section class="main-col">
+
+        <div class="card">
+
+          <p class="eyebrow">Voice command centre</p>
+
+          <h2>What would you like to know?</h2>
+
+          <p class="sub">Click the microphone, speak a PerXL task question, review the speech-to-text result, and press Run Command.</p>
+
+
+
+          <div class="voice-area">
+
+            <button class="mic-button" id="micButton" aria-label="Start voice input" title="Start voice input">🎙</button>
+
+            <p class="voice-label" id="voiceLabel">Ready to listen</p>
+
+            <p class="voice-help" id="voiceHelp">Microphone access is required. Speech recognition support depends on your browser.</p>
+
+          </div>
+
+
+
+          <label for="commandText">Recognized speech / command</label>
+
+          <textarea id="commandText" placeholder="Your spoken words will appear here. You can also type a command, for example: Show completed tasks."></textarea>
+
+          <div class="actions">
+
+            <button class="btn btn-primary" id="runButton">Run Command →</button>
+
+            <button class="btn btn-secondary" id="clearButton">Clear</button>
+
+            <button class="btn btn-secondary" id="checkApiButton">Check API</button>
+
+          </div>
+
+
+
+          <div class="hint">
+
+            Supported command examples in this starter frontend: “show task summary”, “show completed tasks”,
+
+            “show in progress tasks”, and “show to do tasks”. The frontend calls the existing summary and
+
+            by-status endpoints. Commands such as overdue tasks need a corresponding backend endpoint before they can run.
+
+          </div>
+
+        </div>
+
+
+
+        <div class="card">
+
+          <p class="eyebrow">Quick commands</p>
+
+          <h2>Try a command</h2>
+
+          <div class="quick-grid">
+
+            <button class="quick-command" data-command="Show task summary">
+
+              <strong>▦ Task summary</strong><span>View aggregate task information</span>
+
+            </button>
+
+            <button class="quick-command" data-command="Show completed tasks">
+
+              <strong>✓ Completed tasks</strong><span>Retrieve tasks with Completed status</span>
+
+            </button>
+
+            <button class="quick-command" data-command="Show in progress tasks">
+
+              <strong>◷ In-progress tasks</strong><span>Retrieve tasks currently in progress</span>
+
+            </button>
+
+            <button class="quick-command" data-command="Show to do tasks">
+
+              <strong>☷ To-do tasks</strong><span>Retrieve tasks with ToDo status</span>
+
+            </button>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+
+      <aside class="side-col">
+
+        <div class="card">
+
+          <p class="eyebrow">Command output</p>
+
+          <h2>Results</h2>
+
+          <p class="sub">The API response for your most recent command appears below.</p>
+
+          <div class="result-box">
+
+            <div class="result-head">
+
+              <strong id="resultTitle">Waiting for command</strong>
+
+              <span class="badge" id="resultBadge">READY</span>
+
+            </div>
+
+            <div class="result-content" id="resultContent">
+
+              <p class="placeholder">No command has been executed yet.</p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="card">
+
+          <p class="eyebrow">Recent activity</p>
+
+          <h2>Command history</h2>
+
+          <div class="history-list" id="historyList">
+
+            <p class="placeholder">Your recent commands will appear here.</p>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="card">
+
+          <p class="eyebrow">Connection settings</p>
+
+          <h2>Backend API</h2>
+
+          <label for="apiBaseUrl">API base URL</label>
+
+          <input id="apiBaseUrl" value="" spellcheck="false">
+
+          <p class="sub">Change this if your FastAPI backend runs on a different address or port.</p>
+
+        </div>
+
+      </aside>
+
+    </main>
+
+    <footer class="footer">PerXL Data Review · Voice interface starter frontend</footer>
+
+  </div>
+
+
+
+  <script>
+
+    const commandText = document.getElementById("commandText");
+
+    const micButton = document.getElementById("micButton");
+
+    const voiceLabel = document.getElementById("voiceLabel");
+
+    const voiceHelp = document.getElementById("voiceHelp");
+
+    const runButton = document.getElementById("runButton");
+
+    const resultTitle = document.getElementById("resultTitle");
+
+    const resultBadge = document.getElementById("resultBadge");
+
+    const resultContent = document.getElementById("resultContent");
+
+    const historyList = document.getElementById("historyList");
+
+    const apiBaseUrlInput = document.getElementById("apiBaseUrl");
+
+    const apiStatus = document.getElementById("apiStatus");
+
+    const apiDot = document.getElementById("apiDot");
+
+
+
+    let recognition = null;
+
+    let listening = false;
+
+    let history = [];
+
+
+
+    function baseUrl() {
+
+      const configuredUrl = apiBaseUrlInput.value.trim().replace(/\/+$/, "");
+      return configuredUrl || window.location.origin;
+
+    }
+
+
+
+    function setResult(title, status, data, isError = false) {
+
+      resultTitle.textContent = title;
+
+      resultBadge.textContent = status;
+
+      resultBadge.className = isError ? "badge error" : "badge";
+
+      resultContent.replaceChildren();
+
+      const pre = document.createElement("pre");
+
+      pre.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+
+      resultContent.appendChild(pre);
+
+    }
+
+
+
+    function addHistory(command, outcome) {
+
+      history.unshift({ command, outcome, time: new Date().toLocaleTimeString() });
+
+      history = history.slice(0, 6);
+
+      historyList.replaceChildren();
+
+      history.forEach(item => {
+
+        const wrapper = document.createElement("div");
+
+        wrapper.className = "history-item";
+
+        const title = document.createElement("strong");
+
+        title.textContent = item.command;
+
+        const details = document.createElement("p");
+
+        details.textContent = `${item.outcome} · ${item.time}`;
+
+        wrapper.append(title, details);
+
+        historyList.appendChild(wrapper);
+
+      });
+
+    }
+
+
+
+    function setListening(value) {
+
+      listening = value;
+
+      micButton.classList.toggle("listening", value);
+
+      micButton.textContent = value ? "■" : "🎙";
+
+      voiceLabel.textContent = value ? "Listening… speak now" : "Ready to listen";
+
+      voiceHelp.textContent = value
+
+        ? "When you finish speaking, your recognized words will appear in the text box."
+
+        : "Click the microphone to speak. Review the transcript before running the command.";
+
+    }
+
+
+
+    function initSpeechRecognition() {
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+
+        micButton.disabled = true;
+
+        micButton.style.opacity = ".45";
+
+        voiceLabel.textContent = "Speech recognition not supported";
+
+        voiceHelp.textContent = "Try a supported browser such as Google Chrome or Microsoft Edge. You can still type a command below.";
+
+        return;
+
+      }
+
+      recognition = new SpeechRecognition();
+
+      recognition.lang = "en-IN";
+
+      recognition.continuous = false;
+
+      recognition.interimResults = true;
+
+      recognition.onstart = () => setListening(true);
+
+      recognition.onresult = event => {
+
+        let finalText = "";
+
+        let interimText = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+
+          const transcript = event.results[i][0].transcript;
+
+          if (event.results[i].isFinal) finalText += transcript;
+
+          else interimText += transcript;
+
+        }
+
+        if (finalText.trim()) commandText.value = (commandText.value.trim() ? commandText.value.trim() + " " : "") + finalText.trim();
+
+        else if (interimText.trim()) voiceLabel.textContent = "Hearing: " + interimText.trim();
+
+      };
+
+      recognition.onerror = event => {
+
+        setListening(false);
+
+        voiceLabel.textContent = "Microphone / recognition issue";
+
+        voiceHelp.textContent = `Speech recognition error: ${event.error}. You can type your command instead.`;
+
+      };
+
+      recognition.onend = () => setListening(false);
+
+    }
+
+
+
+    async function requestJson(path, options = {}) {
+
+      const response = await fetch(`${baseUrl()}${path}`, options);
+
+      const bodyText = await response.text();
+
+      let body;
+
+      try { body = bodyText ? JSON.parse(bodyText) : null; }
+
+      catch { body = bodyText; }
+
+      if (!response.ok) {
+
+        const error = new Error(`HTTP ${response.status}`);
+
+        error.body = body;
+
+        error.status = response.status;
+
+        throw error;
+
+      }
+
+      return body;
+
+    }
+
+
+
+    async function checkApi() {
+
+      apiStatus.textContent = "Checking API…";
+
+      apiDot.style.background = "#f2b84b";
+
+      try {
+
+        await requestJson("/tasks/summary");
+
+        apiStatus.textContent = "API connected";
+
+        apiDot.style.background = "#36c98f";
+
+        return true;
+
+      } catch (error) {
+
+        apiStatus.textContent = "API unavailable";
+
+        apiDot.style.background = "#e35d5d";
+
+        setResult("API connection check", "ERROR", {
+
+          message: "Could not retrieve /tasks/summary. Confirm that FastAPI is running and check the API base URL.",
+
+          details: error.body || error.message
+
+        }, true);
+
+        return false;
+
+      }
+
+    }
+
+
+
+    function identifyCommand(text) {
+
+      const normalized = text.toLowerCase().replace(/[.!?]/g, " ").replace(/\s+/g, " ").trim();
+
+
+
+      if (/(task summary|summary of tasks|overall tasks|total tasks|how many tasks|show summary)/.test(normalized)) {
+
+        return { type: "summary", label: "Task summary" };
+
+      }
+
+
+
+      if (/(completed|complete|finished|closed) tasks/.test(normalized) || normalized.includes("show completed")) {
+
+        return { type: "status", status: "Completed", label: "Completed tasks" };
+
+      }
+
+
+
+      if (/(in progress|ongoing|currently working|work in progress)/.test(normalized)) {
+
+        return { type: "status", status: "In Progress", label: "In-progress tasks" };
+
+      }
+
+
+
+      if (/(to do|todo|not started|pending tasks)/.test(normalized)) {
+
+        return { type: "status", status: "ToDo", label: "To-do tasks" };
+
+      }
+
+
+
+      if (normalized.includes("overdue")) {
+
+        return { type: "unsupported", label: "Overdue tasks", message: "An overdue-tasks API endpoint is not confirmed in the current project. Add that backend endpoint before this command can run." };
+
+      }
+
+
+
+      return { type: "unknown", label: "Command not recognized", message: "Try: show task summary, show completed tasks, show in progress tasks, or show to do tasks." };
+
+    }
+
+
+
+    async function runCommand() {
+
+      const command = commandText.value.trim();
+
+      if (!command) {
+
+        setResult("No command entered", "INPUT NEEDED", "Speak or type a command first.", true);
+
+        return;
+
+      }
+
+
+
+      runButton.disabled = true;
+
+      runButton.textContent = "Running…";
+
+      const intent = identifyCommand(command);
+
+
+
+      try {
+
+        if (intent.type === "summary") {
+
+          const data = await requestJson("/tasks/summary");
+
+          setResult(intent.label, "SUCCESS", data);
+
+          addHistory(command, "Success");
+
+        } else if (intent.type === "status") {
+
+          const params = new URLSearchParams({ status: intent.status });
+
+          const data = await requestJson(`/tasks/by-status?${params.toString()}`);
+
+          setResult(intent.label, "SUCCESS", data);
+
+          addHistory(command, "Success");
+
+        } else if (intent.type === "unsupported") {
+
+          setResult(intent.label, "NOT AVAILABLE", intent.message, true);
+
+          addHistory(command, "Unsupported endpoint");
+
+        } else {
+
+          setResult(intent.label, "NOT RECOGNIZED", intent.message, true);
+
+          addHistory(command, "Not recognized");
+
+        }
+
+      } catch (error) {
+
+        setResult(intent.label || "Request failed", "API ERROR", {
+
+          message: "The command was recognized, but the API request failed.",
+
+          status: error.status || null,
+
+          details: error.body || error.message,
+
+          checks: [
+
+            "Confirm the FastAPI server is running.",
+
+            "Check that the endpoint exists in /docs.",
+
+            "Confirm the status parameter name matches the API.",
+
+            "If the browser reports a CORS error, enable CORS in the FastAPI backend."
+
+          ]
+
+        }, true);
+
+        addHistory(command, "API error");
+
+      } finally {
+
+        runButton.disabled = false;
+
+        runButton.textContent = "Run Command →";
+
+      }
+
+    }
+
+
+
+    micButton.addEventListener("click", () => {
+
+      if (!recognition) return;
+
+      if (listening) recognition.stop();
+
+      else {
+
+        try { recognition.start(); }
+
+        catch (error) {
+
+          voiceLabel.textContent = "Could not start microphone";
+
+          voiceHelp.textContent = "Wait a moment and try again, or type your command.";
+
+        }
+
+      }
+
+    });
+
+
+
+    runButton.addEventListener("click", runCommand);
+
+    document.getElementById("clearButton").addEventListener("click", () => {
+
+      commandText.value = "";
+
+      setResult("Waiting for command", "READY", "Transcript cleared. Speak or type a new command.");
+
+    });
+
+    document.getElementById("checkApiButton").addEventListener("click", checkApi);
+
+
+
+    document.querySelectorAll("[data-command]").forEach(button => {
+
+      button.addEventListener("click", () => {
+
+        commandText.value = button.dataset.command;
+
+        commandText.focus();
+
+      });
+
+    });
+
+
+
+    initSpeechRecognition();
+
+    checkApi();
+
+  </script>
+
+</body>
+
+</html>
