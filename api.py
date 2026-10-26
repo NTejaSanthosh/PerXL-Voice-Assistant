@@ -9,87 +9,154 @@ from fastapi.responses import FileResponse
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 FRONTEND_FILE = BASE_DIR / "public" / "index.html"
-EXCLUDED_WORDS = {"resource", "secret", "credential", "password"}
 
 app = FastAPI(
     title="PerXL Data Review API",
-    description="Local demonstration using exported JSON files",
+    description="PerXL Data Review API",
     version="2.1.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5500",
-        "http://localhost:5500",
-        "http://127.0.0.1:8000",
-        "http://localhost:8000",
-    ],
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+@app.get("/")
+def home():
+    if FRONTEND_FILE.exists():
+        return FileResponse(FRONTEND_FILE)
+    return {
+        "message": "PerXL Data Review API is running",
+        "documentation": "/docs",
+        "health": "/health",
+    }
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 def get_available_collections():
     if not DATA_DIR.exists():
-        return {}
+        return []
 
-    collections = {}
-
-    for path in DATA_DIR.glob("*.json"):
-        name_lower = path.stem.lower()
-
-        if any(word in name_lower for word in EXCLUDED_WORDS):
-            continue
-
-        collections[path.stem] = path
-
-    return collections
+    return sorted(
+        path.stem
+        for path in DATA_DIR.glob("*.json")
+        if path.is_file()
+    )
 
 
 def load_collection(collection_name):
-    collections = get_available_collections()
-
-    if collection_name not in collections:
+    if not DATA_DIR.exists():
         raise HTTPException(
             status_code=404,
-            detail="Collection not found or excluded from this demo.",
+            detail="Data directory is not available on this deployment.",
         )
 
-    file_path = collections[collection_name]
+    safe_name = Path(collection_name).name
+    file_path = DATA_DIR / (
+        safe_name if safe_name.endswith(".json")
+        else f"{safe_name}.json"
+    )
+
+    if not file_path.exists() or file_path.parent != DATA_DIR:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Collection '{collection_name}' was not found.",
+        )
 
     try:
         with file_path.open("r", encoding="utf-8-sig") as file:
             data = json.load(file)
-    except FileNotFoundError as exc:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Data file not found for collection: {collection_name}",
-        ) from exc
-    except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid JSON in collection: {collection_name}",
-        ) from exc
-    except OSError as exc:
+    except (json.JSONDecodeError, OSError):
         raise HTTPException(
             status_code=500,
-            detail=f"Unable to read collection: {collection_name}",
-        ) from exc
+            detail=f"Collection '{collection_name}' could not be read.",
+        )
 
     if isinstance(data, list):
         return data
 
     if isinstance(data, dict):
-        for key in ("data", "results", "items", "tasks", "Tasks"):
+        for key in ("records", "data", "items"):
             if isinstance(data.get(key), list):
                 return data[key]
-
         return [data]
 
-    raise HTTPException(
-        status_code=422,
-        detail=f"Unsupported JSON structure in collection: {collection_name}",
-    )
+    return []
 
+
+@app.get("/collections")
+def collections():
+    available = get_available_collections()
+    return {
+        "count": len(available),
+        "collections": available,
+    }
+
+
+@app.get("/collections/{collection_name}/schema")
+def collection_schema(collection_name: str):
+    records = load_collection(collection_name)
+    fields = sorted({
+        key
+        for record in records
+        if isinstance(record, dict)
+        for key in record.keys()
+    })
+
+    return {
+        "collection": collection_name,
+        "total_records": len(records),
+        "fields": fields,
+    }
+
+
+@app.get("/collections/{collection_name}/records")
+def collection_records(
+    collection_name: str,
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+):
+    records = load_collection(collection_name)
+
+    return {
+        "collection": collection_name,
+        "total_records": len(records),
+        "limit": limit,
+        "offset": offset,
+        "records": records[offset:offset + limit],
+    }
+
+
+@app.get("/collections/{collection_name}/search")
+def search_collection(
+    collection_name: str,
+    q: str = Query(..., min_length=1),
+    limit: int = Query(100, ge=1, le=1000),
+):
+    records = load_collection(collection_name)
+    query = q.casefold()
+
+    matches = [
+        record
+        for record in records
+        if query in json.dumps(
+            record,
+            ensure_ascii=False,
+            default=str,
+        ).casefold()
+    ]
+
+    return {
+        "collection": collection_name,
+        "query": q,
+        "total_matches": len(matches),
+        "records": matches[:limit],
+    }
