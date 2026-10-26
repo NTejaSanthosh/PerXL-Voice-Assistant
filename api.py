@@ -160,3 +160,134 @@ def search_collection(
         "total_matches": len(matches),
         "records": matches[:limit],
     }
+    def get_task_records():
+    return load_collection("PTMTDB_Prod.Tasks")
+
+
+@app.get("/tasks/summary")
+def task_summary():
+    records = get_task_records()
+    statuses = Counter(
+        str(record.get("Status", "Unknown"))
+        for record in records
+        if isinstance(record, dict)
+    )
+    priorities = Counter(
+        str(record.get("Priority", "Unknown"))
+        for record in records
+        if isinstance(record, dict)
+    )
+
+    closed_count = sum(
+        1
+        for record in records
+        if isinstance(record, dict)
+        and str(record.get("IsClosed", "")).casefold() == "true"
+    )
+
+    return {
+        "total_tasks": len(records),
+        "closed_tasks": closed_count,
+        "tasks_by_status": dict(statuses),
+        "tasks_by_priority": dict(priorities),
+    }
+
+
+@app.get("/tasks/by-status")
+def tasks_by_status():
+    records = get_task_records()
+    counts = Counter(
+        str(record.get("Status", "Unknown"))
+        for record in records
+        if isinstance(record, dict)
+    )
+
+    return {
+        "total_tasks": len(records),
+        "tasks_by_status": dict(counts),
+    }
+
+
+@app.get("/tasks/by-priority")
+def tasks_by_priority():
+    records = get_task_records()
+    counts = Counter(
+        str(record.get("Priority", "Unknown"))
+        for record in records
+        if isinstance(record, dict)
+    )
+
+    return {
+        "total_tasks": len(records),
+        "tasks_by_priority": dict(counts),
+    }
+
+
+@app.get("/tasks/by-space/{space_id}")
+def tasks_by_space(space_id: str):
+    records = get_task_records()
+    matches = [
+        record
+        for record in records
+        if isinstance(record, dict)
+        and str(record.get("SpaceID", "")) == space_id
+    ]
+
+    return {
+        "space_id": space_id,
+        "total_tasks": len(matches),
+        "tasks": matches,
+    }
+
+
+@app.get("/tasks/{task_id}/comments")
+def task_comments(task_id: str):
+    records = load_collection("PTMTDB_Prod.TaskComments")
+    matches = [
+        record
+        for record in records
+        if isinstance(record, dict)
+        and str(record.get("TaskId", "")) == task_id
+    ]
+
+    return {
+        "task_id": task_id,
+        "total_comments": len(matches),
+        "comments": matches,
+    }
+
+
+@app.get("/tasks/{task_id}/metrics")
+def task_metrics(task_id: str):
+    records = load_collection("PTMTDB_Prod.TasksPerformanceMetrics")
+    matches = [
+        record
+        for record in records
+        if isinstance(record, dict)
+        and str(record.get("TaskId", "")) == task_id
+    ]
+
+    return {
+        "task_id": task_id,
+        "total_metrics": len(matches),
+        "metrics": matches,
+    }
+
+
+@app.get("/tasks/{task_id}")
+def get_task(task_id: str):
+    records = get_task_records()
+
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+
+        record_id = record.get("TaskId", record.get("_id", record.get("Id")))
+
+        if str(record_id) == task_id:
+            return record
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"Task '{task_id}' was not found.",
+    )
