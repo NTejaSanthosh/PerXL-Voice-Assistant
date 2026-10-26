@@ -291,3 +291,57 @@ def get_task(task_id: str):
         status_code=404,
         detail=f"Task '{task_id}' was not found.",
     )
+    @app.get("/sections")
+def get_sections():
+    records = load_collection("PTMTDB_Prod.Sections")
+
+    return {
+        "total_sections": len(records),
+        "sections": records,
+    }
+
+
+@app.get("/sections/by-space/{space_id}")
+def get_sections_by_space(space_id: str):
+    records = load_collection("PTMTDB_Prod.Sections")
+
+    matches = [
+        record
+        for record in records
+        if isinstance(record, dict)
+        and str(record.get("SpaceID", "")) == space_id
+    ]
+
+    return {
+        "space_id": space_id,
+        "total_sections": len(matches),
+        "sections": matches,
+    }
+
+
+@app.get("/spaces")
+def get_spaces():
+    records = load_collection("PTMTDB_Prod.Space")
+
+    return {
+        "total_spaces": len(records),
+        "spaces": records,
+    }
+
+
+@app.get("/spaces/by-workspace/{workspace_id}")
+def get_spaces_by_workspace(workspace_id: str):
+    records = load_collection("PTMTDB_Prod.Space")
+
+    matches = [
+        record
+        for record in records
+        if isinstance(record, dict)
+        and str(record.get("WorkSpaceID", "")) == workspace_id
+    ]
+
+    return {
+        "workspace_id": workspace_id,
+        "total_spaces": len(matches),
+        "spaces": matches,
+    }
