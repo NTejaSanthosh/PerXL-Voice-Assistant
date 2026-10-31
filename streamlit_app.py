@@ -129,3 +129,26 @@ with tab3:
 
 st.divider()
 st.caption("PerXL Voice Assistant | FastAPI + Streamlit")
+
+
+st.subheader("🎤 Talk to PerXL Voice Assistant")
+
+audio = st.audio_input("Record your question")
+
+if audio is not None:
+    st.audio(audio)
+
+    st.success("Audio recorded successfully.")
+
+    st.download_button(
+        "Download recorded audio",
+        data=audio.getvalue(),
+        file_name="voice_question.wav",
+        mime="audio/wav"
+    )
+
+st.caption(
+    "Recording is available. Speech recognition and assistant responses "
+    "must be connected to the backend before this audio can be processed."
+)
+
