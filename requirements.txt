@@ -2,3 +2,5 @@ streamlit
 requests
 fastapi
 uvicorn
+pandas
+SpeechRecognition
